@@ -49,8 +49,17 @@ export default function AppLayout() {
   // when an error occurs in the internal profilePromise (due to server or network issues)
   // See: https://github.com/medplum/medplum/issues/5933
   useEffect(() => {
+    console.log("AppLayout: medplum.isLoading():", medplum.isLoading());
+    console.log("AppLayout: medplum.getActiveLogin():", medplum.getActiveLogin());
+    console.log("AppLayout: profile:", profile);
+
+    if (profile) {
+      console.log("AppLayout: profile ID:", profile.id);
+      console.log("AppLayout: profile resourceType:", profile.resourceType);
+    }
+
     retryMedplumProfile(medplum);
-  }, [medplum]);
+  }, [medplum, profile]);
 
   // Set up push notifications when user is logged in
   useEffect(() => {
@@ -64,6 +73,12 @@ export default function AppLayout() {
   }
   if (!medplum.getActiveLogin()) {
     return <Redirect href="/sign-in" />;
+  }
+
+  // If we have an active login but no profile, it might be a 'Client not found' situation
+  if (!profile && !medplum.isLoading()) {
+    console.warn("AppLayout: Active login found, but no profile is linked to this membership.");
+    // We could potentially redirect to a profile selection/creation page here
   }
 
   return (

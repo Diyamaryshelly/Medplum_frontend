@@ -34,6 +34,7 @@ SplashScreen.preventAutoHideAsync();
 
 polyfillMedplumWebAPIs();
 const medplum = new MedplumClient({
+  baseUrl: process.env.EXPO_PUBLIC_MEDPLUM_BASE_URL,
   clientId: oauth2ClientId,
   storage: new ExpoClientStorage(),
   onUnauthenticated: () => {

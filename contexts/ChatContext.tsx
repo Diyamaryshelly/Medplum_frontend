@@ -251,6 +251,15 @@ export function ChatProvider({
 }: ChatProviderProps) {
   const { medplum } = useMedplumContext();
   const [profile, setProfile] = useState(medplum.getProfile());
+
+  useEffect(() => {
+    const currentProfile = medplum.getProfile();
+    console.log("Medplum Profile:", currentProfile);
+    if (currentProfile) {
+      console.log("Profile ID:", currentProfile.id);
+      console.log("Resource Type:", currentProfile.resourceType);
+    }
+  }, [medplum]);
   const [threads, setThreads] = useState<Communication[]>([]);
   const [threadCommMap, setThreadCommMap] = useState<Map<string, Communication[]>>(new Map());
   const [reconnecting, setReconnecting] = useState(false);
@@ -272,13 +281,21 @@ export function ChatProvider({
   }, [profile, threads, threadCommMap]);
 
   // Query setup for subscription
-  const subscriptionQuery = useMemo(
-    () => ({
+  const subscriptionQuery = useMemo(() => {
+    const query: QueryTypes = {
       "part-of:missing": true,
-      subject: profile?.resourceType === "Patient" ? getReferenceString(profile) : undefined,
-    }),
-    [profile],
-  );
+    };
+    if (profile?.resourceType === "Patient") {
+      query.subject = getReferenceString(profile);
+    } else if (profile?.resourceType === "Practitioner") {
+      // For practitioners, we might want to see threads where they are involved.
+      // However, in this app's model, threads are identified by 'subject' (the patient).
+      // If we want practitioners to see all patient chats, we leave subject undefined.
+      // If we want to filter by sender/recipient, we would use:
+      // query._filter = `sender eq ${getReferenceString(profile)} or recipient eq ${getReferenceString(profile)}`;
+    }
+    return query;
+  }, [profile]);
 
   // Query for fetching threads (including messages)
   const threadsQuery = useMemo(
@@ -296,10 +313,14 @@ export function ChatProvider({
 
     try {
       setIsLoadingThreads(true);
+      console.log("refreshThreads: profile:", profile?.id);
+      console.log("refreshThreads: threadsQuery:", threadsQuery);
       const { threads, threadCommMap } = await fetchThreads({ medplum, threadsQuery });
+      console.log("refreshThreads: threads found:", threads.length);
       setThreads(threads);
       setThreadCommMap(threadCommMap);
     } catch (err) {
+      console.error("refreshThreads: Error fetching threads:", err);
       onError?.(err as Error);
     } finally {
       setIsLoadingThreads(false);
@@ -372,10 +393,10 @@ export function ChatProvider({
   );
 
   // Handle profile changes, clear state
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const latestProfile = medplum.getProfile();
     if (profile?.id !== latestProfile?.id) {
+      console.log("Profile changed, resetting chat state");
       setProfile(latestProfile);
       setThreads([]);
       setThreadCommMap(new Map());
@@ -384,7 +405,7 @@ export function ChatProvider({
       setIsLoadingThreads(true);
       setIsLoadingMessagesMap(new Map());
     }
-  });
+  }, [medplum, profile?.id]);
 
   // Load initial data
   useEffect(() => {
