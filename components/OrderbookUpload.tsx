@@ -175,7 +175,7 @@ export function OrderbookUpload({ patientId, onSuccess }: { patientId?: string; 
     // ── Resolve patient ID ───────────────────────────────────────────────────
     const targetPatientId = patientId || (profile?.resourceType === "Patient" ? profile.id : undefined);
     if (!targetPatientId) {
-      Alert.alert("Error", "No patient found. Please log in again.");
+      Alert.alert("Error", "No patient found. If you are a practitioner, please select a patient first.");
       console.error("[OrderbookUpload] Save aborted — no patientId.");
       return;
     }
@@ -205,8 +205,26 @@ export function OrderbookUpload({ patientId, onSuccess }: { patientId?: string; 
 
       console.log("[OrderbookUpload] Vitals being saved to FHIR:", JSON.stringify(vitalsToSave, null, 2));
 
-      // ── Step 3: Save to FHIR via saveVitalsToFHIR directly ──────────────
-      await saveVitalsToFHIR(vitalsToSave, targetPatientId, medplum, docRefId);
+      // ── Step 3: Save to FHIR via backend proxy (HAPI) ──────────────────
+      console.log("[OrderbookUpload] Saving to HAPI via backend proxy...");
+      const saveResponse = await fetch("http://localhost:8103/ocr/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...vitalsToSave,
+          patientId: targetPatientId,
+        }),
+      });
+
+      if (!saveResponse.ok) {
+        throw new Error(`Failed to save to HAPI: ${saveResponse.statusText}`);
+      }
+
+      const saveResult = await saveResponse.json();
+      console.log("[OrderbookUpload] HAPI save result:", saveResult);
+
+      // (Optional) Keep the original Medplum save if desired
+      // await saveVitalsToFHIR(vitalsToSave, targetPatientId, medplum, docRefId);
 
       // ── Step 4: Refresh list + notify parent ─────────────────────────────
       await fetchOrderbook();

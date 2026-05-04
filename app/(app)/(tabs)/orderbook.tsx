@@ -130,7 +130,7 @@ export default function OrderbookScreen() {
   const isPractitioner = profile?.resourceType === "Practitioner";
   const isPatient = profile?.resourceType === "Patient";
 
-  const targetPatientId = isPractitioner ? selectedPatientId : undefined;
+  const targetPatientId = isPractitioner ? selectedPatientId : (isPatient ? profile?.id : undefined);
   
   const { entries, isLoading, fetchOrderbook, updateObservation } = useOrderbook(targetPatientId);
 
@@ -179,8 +179,8 @@ export default function OrderbookScreen() {
           </VStack>
         )}
 
-        {isPatient && (
-            <OrderbookUpload onSuccess={fetchOrderbook} />
+        {(isPatient || isPractitioner) && (
+            <OrderbookUpload patientId={targetPatientId} onSuccess={fetchOrderbook} />
         )}
 
         <VStack space="md">
