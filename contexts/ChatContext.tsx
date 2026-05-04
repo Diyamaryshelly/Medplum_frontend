@@ -18,6 +18,7 @@ import * as ImagePicker from "expo-image-picker";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createContext } from "use-context-selector";
 
+import { useContextSwitcher } from "@/contexts/ContextSwitcherContext";
 import { Thread } from "@/models/chat";
 import { syncResourceArray } from "@/utils/array";
 import { getQueryString } from "@/utils/url";
@@ -250,7 +251,8 @@ export function ChatProvider({
   onError,
 }: ChatProviderProps) {
   const { medplum } = useMedplumContext();
-  const [profile, setProfile] = useState(medplum.getProfile());
+  const { spoofedPatient } = useContextSwitcher();
+  const [profile, setProfile] = useState(spoofedPatient || medplum.getProfile());
 
   useEffect(() => {
     const currentProfile = medplum.getProfile();
@@ -394,7 +396,7 @@ export function ChatProvider({
 
   // Handle profile changes, clear state
   useEffect(() => {
-    const latestProfile = medplum.getProfile();
+    const latestProfile = spoofedPatient || medplum.getProfile();
     if (profile?.id !== latestProfile?.id) {
       console.log("Profile changed, resetting chat state");
       setProfile(latestProfile);
@@ -405,7 +407,7 @@ export function ChatProvider({
       setIsLoadingThreads(true);
       setIsLoadingMessagesMap(new Map());
     }
-  }, [medplum, profile?.id]);
+  }, [medplum, profile?.id, spoofedPatient]);
 
   // Load initial data
   useEffect(() => {

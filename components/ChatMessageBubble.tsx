@@ -1,4 +1,4 @@
-import { useMedplumProfile } from "@medplum/react-hooks";
+import { useMedplumContext } from "@medplum/react-hooks";
 import { useVideoPlayer } from "expo-video";
 import { VideoView } from "expo-video";
 import { CirclePlay, FileDown, UserRound } from "lucide-react-native";
@@ -116,6 +116,8 @@ function FileAttachment({ attachment }: { attachment: AttachmentWithUrl }) {
   );
 }
 
+import { useContextSwitcher } from "@/contexts/ContextSwitcherContext";
+
 export function ChatMessageBubble({
   message,
   avatarURL,
@@ -123,7 +125,9 @@ export function ChatMessageBubble({
   onSelect,
   selectionEnabled = false,
 }: ChatMessageBubbleProps) {
-  const profile = useMedplumProfile();
+  const { profile: medplumProfile } = useMedplumContext();
+  const { spoofedPatient } = useContextSwitcher();
+  const profile = spoofedPatient || medplumProfile;
   const isPatientMessage = message.senderType === "Patient";
   const isCurrentUser = message.senderType === profile?.resourceType;
   const hasImage = message.attachment?.contentType?.startsWith("image/");

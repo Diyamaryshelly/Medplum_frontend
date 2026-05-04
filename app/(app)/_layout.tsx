@@ -6,6 +6,7 @@ import { useEffect } from "react";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { PractitionerBanner } from "@/components/PractitionerBanner";
 import { ChatProvider } from "@/contexts/ChatContext";
+import { ContextSwitcherProvider } from "@/contexts/ContextSwitcherContext";
 import { useNotifications } from "@/contexts/NotificationsContext";
 
 async function retryMedplumProfile(medplum: MedplumClient) {
@@ -82,15 +83,17 @@ export default function AppLayout() {
   }
 
   return (
-    <ChatProvider>
-      {isPractitioner && <PractitionerBanner />}
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          // Prevents flickering:
-          animation: "none",
-        }}
-      />
-    </ChatProvider>
+    <ContextSwitcherProvider>
+      <ChatProvider>
+        <PractitionerBanner />
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            // Prevents flickering:
+            animation: "none",
+          }}
+        />
+      </ChatProvider>
+    </ContextSwitcherProvider>
   );
 }

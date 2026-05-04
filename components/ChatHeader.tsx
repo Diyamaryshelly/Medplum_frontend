@@ -5,6 +5,8 @@ import { ChevronLeftIcon, TrashIcon, UserRound, XIcon } from "lucide-react-nativ
 import { useMemo } from "react";
 import { View } from "react-native";
 
+import { useContextSwitcher } from "@/contexts/ContextSwitcherContext";
+
 import { LoadingButtonSpinner } from "@/components/LoadingButtonSpinner";
 import { Avatar, AvatarImage } from "@/components/ui/avatar";
 import { Button, ButtonIcon, ButtonText } from "@/components/ui/button";
@@ -117,7 +119,9 @@ function ThreadInfo({ currentThread, avatarURL }: ThreadInfoProps) {
 }
 
 function ChatStatus({ currentThread }: ChatStatusProps) {
-  const { profile } = useMedplumContext();
+  const { profile: medplumProfile } = useMedplumContext();
+  const { spoofedPatient } = useContextSwitcher();
+  const profile = spoofedPatient || medplumProfile;
   const isPatient = profile?.resourceType === "Patient";
 
   const { color, message }: StatusConfig = useMemo(() => {
@@ -170,7 +174,9 @@ export function ChatHeader({
   onCancelSelection,
   isDeleting = false,
 }: ChatHeaderProps) {
-  const { profile } = useMedplumContext();
+  const { profile: medplumProfile } = useMedplumContext();
+  const { spoofedPatient } = useContextSwitcher();
+  const profile = spoofedPatient || medplumProfile;
   const avatarURL = getAvatarURL(currentThread.getAvatarRef({ profile }));
   const isSelectionMode = selectedCount > 0;
 

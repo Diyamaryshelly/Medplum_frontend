@@ -3,6 +3,8 @@ import { EllipsisVerticalIcon, PlusIcon } from "lucide-react-native";
 import { useState } from "react";
 import { Platform } from "react-native";
 
+import { PatientSelectorModal } from "@/components/PatientSelectorModal";
+import { useContextSwitcher } from "@/contexts/ContextSwitcherContext";
 import { Button, ButtonIcon, ButtonText } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Popover, PopoverBackdrop, PopoverBody, PopoverContent } from "@/components/ui/popover";
@@ -16,9 +18,12 @@ interface ThreadListHeaderProps {
 }
 
 export function ThreadListHeader({ onLogout, onCreateThread }: ThreadListHeaderProps) {
-  const { profile } = useMedplumContext();
+  const { profile: medplumProfile } = useMedplumContext();
+  const { spoofedPatient } = useContextSwitcher();
+  const profile = spoofedPatient || medplumProfile;
   const isPatient = profile?.resourceType === "Patient";
   const [isMenuVisible, setIsMenuVisible] = useState(false);
+  const [isPatientModalOpen, setIsPatientModalOpen] = useState(false);
 
   return (
     <View className="border-b border-outline-100 bg-background-0">
@@ -53,6 +58,17 @@ export function ThreadListHeader({ onLogout, onCreateThread }: ThreadListHeaderP
             <PopoverBackdrop />
             <PopoverContent>
               <PopoverBody>
+                {!isPatient && (
+                  <Pressable
+                    onPress={() => {
+                      setIsMenuVisible(false);
+                      setIsPatientModalOpen(true);
+                    }}
+                    className="flex-row items-center p-2 active:bg-secondary-100 border-b border-outline-100 mb-1"
+                  >
+                    <Text className="text-typography-700 font-medium">View as Patient</Text>
+                  </Pressable>
+                )}
                 <Pressable
                   onPress={() => {
                     setIsMenuVisible(false);
@@ -60,13 +76,17 @@ export function ThreadListHeader({ onLogout, onCreateThread }: ThreadListHeaderP
                   }}
                   className="flex-row items-center p-2 active:bg-secondary-100"
                 >
-                  <Text className="text-typography-700">Logout</Text>
+                  <Text className="text-typography-700 text-error-600">Logout</Text>
                 </Pressable>
               </PopoverBody>
             </PopoverContent>
           </Popover>
         </View>
       </View>
+      <PatientSelectorModal 
+        isOpen={isPatientModalOpen} 
+        onClose={() => setIsPatientModalOpen(false)} 
+      />
     </View>
   );
 }
