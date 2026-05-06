@@ -54,7 +54,7 @@ export default function TabsLayout() {
         <Tabs.Screen
           name="history"
           options={{
-            title: "Vitals",
+            title: "History",
             tabBarIcon: ({ color }) => <Icon as={ActivityIcon} size="md" style={{ color }} />,
           }}
         />

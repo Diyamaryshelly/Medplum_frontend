@@ -40,7 +40,7 @@ export default function HistoryScreen() {
     <View className="flex-1 bg-background-50">
       <Stack.Screen 
         options={{ 
-          title: isPractitioner ? "Vitals" : "History",
+          title: "History",
           headerShown: true,
           headerRight: () => (
             <Button variant="link" onPress={fetchVitals}>
