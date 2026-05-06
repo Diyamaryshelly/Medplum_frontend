@@ -2,7 +2,7 @@ import { useMedplumContext } from "@medplum/react-hooks";
 import { Stack } from "expo-router";
 import { VideoIcon, PhoneIcon, PhoneOffIcon } from "lucide-react-native";
 import { useState } from "react";
-import { View, StyleSheet } from "react-native";
+import { View, StyleSheet, Platform } from "react-native";
 import { WebView } from "react-native-webview";
 
 import { Button, ButtonIcon, ButtonText } from "@/components/ui/button";
@@ -44,13 +44,35 @@ export default function VideoCallScreen() {
   };
 
   if (isInCall && roomID) {
+    const jitsiUrl = `https://meet.jit.si/${roomID}#config.startWithAudioMuted=true&config.startWithVideoMuted=false`;
+    
     return (
       <View className="flex-1 bg-black">
         <Stack.Screen options={{ headerShown: false }} />
-        <WebView 
-          source={{ uri: `https://meet.jit.si/${roomID}#config.startWithAudioMuted=true&config.startWithVideoMuted=false` }}
-          style={{ flex: 1 }}
-        />
+        
+        {Platform.OS === 'web' ? (
+          // For web, use iframe
+          <iframe
+            src={jitsiUrl}
+            style={{
+              width: '100%',
+              height: '100%',
+              border: 'none',
+            }}
+            allow="camera; microphone; fullscreen; display-capture"
+          />
+        ) : (
+          // For native (iOS/Android), use WebView
+          <WebView 
+            source={{ uri: jitsiUrl }}
+            style={{ flex: 1 }}
+            mediaPlaybackRequiresUserAction={false}
+            allowsInlineMediaPlayback={true}
+            javaScriptEnabled={true}
+            domStorageEnabled={true}
+          />
+        )}
+        
         <View className="absolute bottom-10 left-0 right-0 items-center">
           <Button action="negative" size="lg" className="rounded-full h-16 w-16" onPress={endCall}>
             <ButtonIcon as={PhoneOffIcon} size="xl" />

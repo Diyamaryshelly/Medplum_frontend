@@ -117,5 +117,28 @@ export function useOrderbook(patientId?: string) {
       await fetchOrderbook();
   };
 
-  return { entries, isLoading, fetchOrderbook, uploadReport, saveExtractedObservations, updateObservation };
+  const deleteReport = async (documentId: string, observationIds: string[]) => {
+    try {
+      console.log("[useOrderbook] Deleting report:", documentId, "with observations:", observationIds);
+      
+      // Delete all related observations first
+      for (const obsId of observationIds) {
+        console.log("[useOrderbook] Deleting observation:", obsId);
+        await medplum.deleteResource("Observation", obsId);
+      }
+      
+      // Delete the document reference
+      console.log("[useOrderbook] Deleting document reference:", documentId);
+      await medplum.deleteResource("DocumentReference", documentId);
+      
+      console.log("[useOrderbook] Delete successful, refreshing orderbook");
+      // Refresh the orderbook
+      await fetchOrderbook();
+    } catch (error) {
+      console.error("[useOrderbook] Error deleting report:", error);
+      throw error;
+    }
+  };
+
+  return { entries, isLoading, fetchOrderbook, uploadReport, saveExtractedObservations, updateObservation, deleteReport };
 }

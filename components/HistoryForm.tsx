@@ -1,3 +1,4 @@
+import { useMedplumContext } from "@medplum/react-hooks";
 import { HeartIcon, ThermometerIcon, ActivityIcon, WindIcon } from "lucide-react-native";
 import { useState } from "react";
 import { View } from "react-native";
