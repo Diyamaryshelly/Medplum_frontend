@@ -13,7 +13,7 @@ import { PushNotificationTokenManager } from "@/utils/notifications";
 
 export default function Index() {
   const { medplum, profile } = useMedplumContext();
-  const { threads, isLoading, createThread } = useThreads();
+  const { threads, isLoading, createThread, refreshThreads } = useThreads();
   const router = useRouter();
   const avatarReferences = useMemo(
     () => threads.map((thread) => thread.getAvatarRef({ profile })),
@@ -36,7 +36,11 @@ export default function Index() {
 
   return (
     <View className="flex-1 bg-background-50">
-      <ThreadListHeader onLogout={handleLogout} onCreateThread={() => setIsCreateModalOpen(true)} />
+      <ThreadListHeader 
+        onLogout={handleLogout} 
+        onCreateThread={() => setIsCreateModalOpen(true)}
+        onRefresh={refreshThreads}
+      />
       <ThreadList
         threads={threads}
         getAvatarURL={getAvatarURL}

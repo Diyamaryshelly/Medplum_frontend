@@ -140,13 +140,38 @@ async function touchThreadLastChanged({
   threadId: string;
   value: string;
 }): Promise<void> {
-  await medplum.patchResource("Communication", threadId, [
-    {
-      op: "add",
-      path: "/extension/0/valueDateTime",
-      value,
-    },
-  ]);
+  try {
+    // First, try to get the thread to check if extension exists
+    const thread = await medplum.readResource("Communication", threadId);
+    
+    if (thread.extension && thread.extension.length > 0) {
+      // Extension exists, update it
+      await medplum.patchResource("Communication", threadId, [
+        {
+          op: "replace",
+          path: "/extension/0/valueDateTime",
+          value,
+        },
+      ]);
+    } else {
+      // Extension doesn't exist, create it
+      await medplum.patchResource("Communication", threadId, [
+        {
+          op: "add",
+          path: "/extension",
+          value: [
+            {
+              url: "https://medplum.com/last-changed",
+              valueDateTime: value,
+            },
+          ],
+        },
+      ]);
+    }
+  } catch (error) {
+    console.error("Failed to touch thread last changed:", error);
+    // Don't throw - this is not critical for message sending
+  }
 }
 
 async function createThreadMessageComm({
@@ -220,6 +245,7 @@ interface ChatContextType {
     threadId: string;
     messageIds: string[];
   }) => Promise<void>;
+  refreshThreads: () => Promise<void>;
 }
 
 export const ChatContext = createContext<ChatContextType>({
@@ -233,6 +259,7 @@ export const ChatContext = createContext<ChatContextType>({
   sendMessage: async () => {},
   markMessageAsRead: async () => {},
   deleteMessages: async () => {},
+  refreshThreads: async () => {},
 });
 
 interface ChatProviderProps {
@@ -360,9 +387,14 @@ export function ChatProvider({
     `Communication?${getQueryString(subscriptionQuery)}`,
     useCallback(
       async (bundle: Bundle) => {
+        console.log("[ChatContext] Received subscription update:", bundle);
         const communication = bundle.entry?.[1]?.resource as Communication;
-        if (!communication) return;
+        if (!communication) {
+          console.log("[ChatContext] No communication in bundle");
+          return;
+        }
 
+        console.log("[ChatContext] Processing communication:", communication.id);
         // Sync the thread
         setThreads((prev) => syncResourceArray(prev, communication));
         // Sync the thread messages
@@ -372,25 +404,32 @@ export function ChatProvider({
     ),
     {
       onWebSocketClose: useCallback(() => {
+        console.log("[ChatContext] WebSocket closed");
         if (!reconnecting) {
           setReconnecting(true);
         }
         onWebSocketClose?.();
       }, [reconnecting, onWebSocketClose]),
       onWebSocketOpen: useCallback(() => {
+        console.log("[ChatContext] WebSocket opened");
         onWebSocketOpen?.();
       }, [onWebSocketOpen]),
       onSubscriptionConnect: useCallback(() => {
+        console.log("[ChatContext] Subscription connected");
         if (!connectedOnce) {
           setConnectedOnce(true);
         }
         if (reconnecting) {
+          console.log("[ChatContext] Reconnected, refreshing threads");
           refreshThreads();
           setReconnecting(false);
         }
         onSubscriptionConnect?.();
       }, [connectedOnce, reconnecting, onSubscriptionConnect, refreshThreads]),
-      onError: useCallback((err: Error) => onError?.(err), [onError]),
+      onError: useCallback((err: Error) => {
+        console.error("[ChatContext] Subscription error:", err);
+        onError?.(err);
+      }, [onError]),
     },
   );
 
@@ -413,6 +452,18 @@ export function ChatProvider({
   useEffect(() => {
     refreshThreads();
   }, [refreshThreads]);
+
+  // Add polling as a fallback for real-time updates (every 5 seconds)
+  useEffect(() => {
+    if (!profile) return;
+    
+    const pollInterval = setInterval(() => {
+      console.log("[ChatContext] Polling for updates (fallback)");
+      refreshThreads();
+    }, 5000); // Poll every 5 seconds
+
+    return () => clearInterval(pollInterval);
+  }, [profile, refreshThreads]);
 
   // CRUD functions
   const createThread = useCallback(
@@ -556,6 +607,7 @@ export function ChatProvider({
     sendMessage,
     markMessageAsRead,
     deleteMessages,
+    refreshThreads,
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;

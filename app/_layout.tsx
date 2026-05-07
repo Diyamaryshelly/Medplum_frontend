@@ -33,8 +33,12 @@ export const unstable_settings = {
 SplashScreen.preventAutoHideAsync();
 
 polyfillMedplumWebAPIs();
+
+const baseUrl = process.env.EXPO_PUBLIC_MEDPLUM_BASE_URL || "http://localhost:8103";
+console.log("[App] Medplum Base URL:", baseUrl);
+
 const medplum = new MedplumClient({
-  baseUrl: process.env.EXPO_PUBLIC_MEDPLUM_BASE_URL,
+  baseUrl: baseUrl,
   clientId: oauth2ClientId,
   storage: new ExpoClientStorage(),
   onUnauthenticated: () => {
@@ -42,6 +46,8 @@ const medplum = new MedplumClient({
     router.replace("/sign-in");
   },
 });
+
+console.log("[App] Initializing WebSocket Manager");
 initWebSocketManager(medplum);
 
 export default function RootLayout() {

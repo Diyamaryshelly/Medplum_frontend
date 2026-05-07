@@ -6,10 +6,12 @@ export function useThreads() {
   const threads = useContextSelector(ChatContext, (state) => state.threads);
   const isLoading = useContextSelector(ChatContext, (state) => state.isLoadingThreads);
   const createThread = useContextSelector(ChatContext, (state) => state.createThread);
+  const refreshThreads = useContextSelector(ChatContext, (state) => state.refreshThreads);
 
   return {
     threads,
     isLoading,
     createThread,
+    refreshThreads,
   };
 }

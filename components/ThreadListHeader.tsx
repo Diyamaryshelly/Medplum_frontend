@@ -1,10 +1,11 @@
 import { useMedplumContext } from "@medplum/react-hooks";
-import { EllipsisVerticalIcon, PlusIcon } from "lucide-react-native";
+import { EllipsisVerticalIcon, PlusIcon, RefreshCwIcon, WifiIcon, WifiOffIcon } from "lucide-react-native";
 import { useState } from "react";
 import { Platform } from "react-native";
 
 import { PatientSelectorModal } from "@/components/PatientSelectorModal";
 import { useContextSwitcher } from "@/contexts/ContextSwitcherContext";
+import { useChatConnectionState } from "@/hooks/useChatConnectionState";
 import { Button, ButtonIcon, ButtonText } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Popover, PopoverBackdrop, PopoverBody, PopoverContent } from "@/components/ui/popover";
@@ -15,24 +16,62 @@ import { View } from "@/components/ui/view";
 interface ThreadListHeaderProps {
   onLogout?: () => void;
   onCreateThread?: () => void;
+  onRefresh?: () => void;
 }
 
-export function ThreadListHeader({ onLogout, onCreateThread }: ThreadListHeaderProps) {
+export function ThreadListHeader({ onLogout, onCreateThread, onRefresh }: ThreadListHeaderProps) {
   const { profile: medplumProfile } = useMedplumContext();
   const { spoofedPatient } = useContextSwitcher();
+  const { connectedOnce, reconnecting } = useChatConnectionState();
   const profile = spoofedPatient || medplumProfile;
   const isPatient = profile?.resourceType === "Patient";
   const [isMenuVisible, setIsMenuVisible] = useState(false);
   const [isPatientModalOpen, setIsPatientModalOpen] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await onRefresh?.();
+    setTimeout(() => setIsRefreshing(false), 500);
+  };
 
   return (
     <View className="border-b border-outline-100 bg-background-0">
       <View className="h-16 flex-row items-center justify-between px-4">
-        <Text size="lg" bold className="text-typography-900">
-          Chat threads
-        </Text>
+        <View className="flex-row items-center gap-2">
+          <Text size="lg" bold className="text-typography-900">
+            Chat threads
+          </Text>
+          {/* Connection Status Indicator */}
+          {reconnecting ? (
+            <View className="flex-row items-center gap-1 px-2 py-1 bg-warning-100 rounded-full">
+              <Icon as={WifiOffIcon} size="xs" className="text-warning-600" />
+              <Text size="xs" className="text-warning-600">Reconnecting...</Text>
+            </View>
+          ) : connectedOnce ? (
+            <View className="flex-row items-center gap-1 px-2 py-1 bg-success-100 rounded-full">
+              <Icon as={WifiIcon} size="xs" className="text-success-600" />
+              <Text size="xs" className="text-success-600">Live</Text>
+            </View>
+          ) : null}
+        </View>
 
         <View className="flex-row items-center gap-2">
+          {/* Refresh Button */}
+          {onRefresh && (
+            <Pressable
+              onPress={handleRefresh}
+              disabled={isRefreshing}
+              className="rounded-full p-2 active:bg-secondary-100"
+            >
+              <Icon 
+                as={RefreshCwIcon} 
+                size="md" 
+                className={`text-typography-700 ${isRefreshing ? 'animate-spin' : ''}`}
+              />
+            </Pressable>
+          )}
+
           {isPatient && onCreateThread && (
             <Button variant="outline" action="primary" size="sm" onPress={() => onCreateThread()}>
               <ButtonIcon as={PlusIcon} size="sm" />

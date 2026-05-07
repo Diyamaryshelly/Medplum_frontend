@@ -1,7 +1,7 @@
 import { useMedplumContext } from "@medplum/react-hooks";
 import * as ImagePicker from "expo-image-picker";
 import { router, useLocalSearchParams } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { Alert, View } from "react-native";
 
 import { ChatHeader } from "@/components/ChatHeader";
@@ -52,6 +52,15 @@ export default function ThreadPage() {
     thread?.getAvatarRef({ profile }),
   ]);
   const [message, setMessage] = useState("");
+  const [messageKey, setMessageKey] = useState(0); // Add key to force re-render
+  const messageRef = useRef(message);
+  const inputRef = useRef<any>(null);
+  
+  // Keep ref in sync with state
+  useEffect(() => {
+    messageRef.current = message;
+  }, [message]);
+  
   const [isAttaching, setIsAttaching] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [selectedMessages, setSelectedMessages] = useState<Set<string>>(new Set());
@@ -77,24 +86,47 @@ export default function ThreadPage() {
 
   const handleSendMessage = useCallback(
     async (attachment?: ImagePicker.ImagePickerAsset) => {
-      if (!thread) return;
+      const currentMessage = messageRef.current;
+      console.log("[ThreadPage] handleSendMessage called, message:", currentMessage);
+      
+      if (!thread) {
+        console.log("[ThreadPage] No thread, returning");
+        return;
+      }
+      if (!currentMessage.trim() && !attachment) {
+        console.log("[ThreadPage] Empty message and no attachment, returning");
+        return;
+      }
+      
+      console.log("[ThreadPage] Setting isSending to true");
       setIsSending(true);
-      const existingMessage = message;
+      
+      // Clear immediately before sending
+      console.log("[ThreadPage] Clearing message state immediately");
       setMessage("");
+      messageRef.current = "";
 
       try {
+        console.log("[ThreadPage] Calling sendMessage with:", currentMessage);
         await sendMessage({
           threadId: thread.id,
-          message: existingMessage,
+          message: currentMessage,
           attachment,
         });
-      } catch {
-        setMessage(existingMessage);
+        console.log("[ThreadPage] Message sent successfully");
+      } catch (error) {
+        console.error("[ThreadPage] Failed to send message:", error);
+        // Restore message on error
+        setMessage(currentMessage);
+        messageRef.current = currentMessage;
+        Alert.alert("Error", "Failed to send message. Please try again.");
+        throw error;
       } finally {
+        console.log("[ThreadPage] Setting isSending to false");
         setIsSending(false);
       }
     },
-    [thread, message, sendMessage],
+    [thread, sendMessage],
   );
 
   const handleAttachment = useCallback(async () => {
@@ -168,10 +200,18 @@ export default function ThreadPage() {
         selectionEnabled={selectedMessages.size > 0}
       />
       <ChatMessageInput
+        key={messageKey}
         message={message}
-        setMessage={setMessage}
+        setMessage={(newMessage) => {
+          console.log("[ThreadPage] setMessage called with:", newMessage);
+          setMessage(newMessage);
+          messageRef.current = newMessage;
+        }}
         onAttachment={handleAttachment}
-        onSend={handleSendMessage}
+        onSend={async () => {
+          console.log("[ThreadPage] onSend called, current message:", message);
+          await handleSendMessage();
+        }}
         isSending={isSending || isAttaching}
         disabled={selectedMessages.size > 0}
       />
